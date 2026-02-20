@@ -1,0 +1,895 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
+local Camera = Workspace.CurrentCamera
+local LP = Players.LocalPlayer
+
+local character = LP.Character or LP.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local function getChar() return LP.Character end
+local function getRoot() return getChar() and getChar():FindFirstChild("HumanoidRootPart") end
+local function getHum() return getChar() and getChar():FindFirstChildOfClass("Humanoid") end
+
+local toggles = {}
+local loops = {}
+local flyBV, flyBG
+local isMobile = UserInputService.TouchEnabled
+
+if LP.PlayerGui:FindFirstChild("FrostHub") then LP.PlayerGui.FrostHub:Destroy() end
+if Workspace:FindFirstChild("FrostESP") then Workspace.FrostESP:Destroy() end
+
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "FrostESP"
+ESPFolder.Parent = Workspace
+
+local SG = Instance.new("ScreenGui")
+SG.Name = "FrostHub"
+SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+SG.ResetOnSpawn = false
+SG.IgnoreGuiInset = true
+SG.Parent = LP:WaitForChild("PlayerGui")
+
+local BASE_W = 530
+local BASE_H = 480
+local REF_W = 1280
+local REF_H = 720
+local menuVisible = true
+
+local Main = Instance.new("Frame")
+Main.AnchorPoint = Vector2.new(0.5, 0.5)
+Main.BackgroundColor3 = Color3.fromRGB(8, 10, 20)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Parent = SG
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 12)
+
+local UIScale = Instance.new("UIScale")
+UIScale.Parent = Main
+
+local MainStroke = Instance.new("UIStroke")
+MainStroke.Color = Color3.fromRGB(50, 110, 255)
+MainStroke.Thickness = 2
+MainStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+MainStroke.Parent = Main
+
+local menuLateral = false
+
+local function applyScale()
+	local vp = Camera.ViewportSize
+	local sc = math.clamp(math.min(vp.X / REF_W, vp.Y / REF_H), 0.4, 1.3)
+	UIScale.Scale = sc
+	Main.Size = UDim2.new(0, BASE_W, 0, BASE_H)
+	if menuLateral then
+		Main.AnchorPoint = Vector2.new(0, 0.5)
+		Main.Position = UDim2.new(0, math.floor(8 * sc), 0.5, 0)
+	else
+		Main.AnchorPoint = Vector2.new(0.5, 0.5)
+		Main.Position = UDim2.new(0.5, 0, 0.5, 0)
+	end
+end
+
+applyScale()
+Camera:GetPropertyChangedSignal("ViewportSize"):Connect(applyScale)
+
+local Top = Instance.new("Frame")
+Top.Size = UDim2.new(1, 0, 0, 44)
+Top.BackgroundColor3 = Color3.fromRGB(15, 30, 120)
+Top.BorderSizePixel = 0
+Top.Parent = Main
+Instance.new("UICorner", Top).CornerRadius = UDim.new(0, 12)
+
+local TopFix = Instance.new("Frame")
+TopFix.Size = UDim2.new(1, 0, 0.5, 0)
+TopFix.Position = UDim2.new(0, 0, 0.5, 0)
+TopFix.BackgroundColor3 = Color3.fromRGB(15, 30, 120)
+TopFix.BorderSizePixel = 0
+TopFix.Parent = Top
+
+local TitleLbl = Instance.new("TextLabel")
+TitleLbl.Size = UDim2.new(1, -40, 1, 0)
+TitleLbl.Position = UDim2.new(0, 12, 0, 0)
+TitleLbl.BackgroundTransparency = 1
+TitleLbl.Text = "❄️  FROST HUB v0.0.1  |  Steal a Brainrot  |  [RShift] скрыть"
+TitleLbl.TextColor3 = Color3.fromRGB(200, 230, 255)
+TitleLbl.Font = Enum.Font.GothamBold
+TitleLbl.TextSize = 13
+TitleLbl.TextXAlignment = Enum.TextXAlignment.Left
+TitleLbl.Parent = Top
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Size = UDim2.new(0, 28, 0, 28)
+CloseBtn.Position = UDim2.new(1, -34, 0, 8)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 40)
+CloseBtn.Text = "✕"
+CloseBtn.TextColor3 = Color3.new(1, 1, 1)
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.TextSize = 13
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Parent = Top
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
+CloseBtn.MouseButton1Click:Connect(function() SG:Destroy() end)
+
+do
+	local dragging, dStart, sPos
+	Top.InputBegan:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = true; dStart = i.Position; sPos = Main.Position
+		end
+	end)
+	UserInputService.InputChanged:Connect(function(i)
+		if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+			local d = i.Position - dStart
+			local sc = UIScale.Scale
+			Main.Position = UDim2.new(sPos.X.Scale, sPos.X.Offset + d.X / sc, sPos.Y.Scale, sPos.Y.Offset + d.Y / sc)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(i)
+		if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+			dragging = false
+		end
+	end)
+end
+
+UserInputService.InputBegan:Connect(function(i, gp)
+	if not gp and i.KeyCode == Enum.KeyCode.RightShift then
+		menuVisible = not menuVisible
+		Main.Visible = menuVisible
+	end
+end)
+
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -10, 1, -54)
+Scroll.Position = UDim2.new(0, 5, 0, 50)
+Scroll.BackgroundTransparency = 1
+Scroll.ScrollBarThickness = 4
+Scroll.ScrollBarImageColor3 = Color3.fromRGB(50, 110, 255)
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+Scroll.Parent = Main
+
+local Grid = Instance.new("UIGridLayout")
+Grid.CellSize = UDim2.new(0, 152, 0, 42)
+Grid.CellPadding = UDim2.new(0, 6, 0, 6)
+Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Grid.SortOrder = Enum.SortOrder.LayoutOrder
+Grid.Parent = Scroll
+
+local UIPad = Instance.new("UIPadding")
+UIPad.PaddingTop = UDim.new(0, 6)
+UIPad.Parent = Scroll
+
+local ON_BG   = Color3.fromRGB(25, 55, 195)
+local OFF_BG  = Color3.fromRGB(20, 20, 36)
+local ON_TXT  = Color3.fromRGB(200, 225, 255)
+local OFF_TXT = Color3.fromRGB(115, 125, 155)
+local ON_STR  = Color3.fromRGB(70, 130, 255)
+local OFF_STR = Color3.fromRGB(38, 42, 100)
+
+local function MakeToggle(label, callback)
+	local btn = Instance.new("TextButton")
+	btn.BackgroundColor3 = OFF_BG
+	btn.BorderSizePixel = 0
+	btn.Text = label .. "  ●  OFF"
+	btn.TextColor3 = OFF_TXT
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 12
+	btn.AutoButtonColor = false
+	btn.Parent = Scroll
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = OFF_STR; stroke.Thickness = 1; stroke.Parent = btn
+
+	toggles[label] = false
+
+	btn.MouseButton1Click:Connect(function()
+		toggles[label] = not toggles[label]
+		local on = toggles[label]
+		btn.BackgroundColor3 = on and ON_BG or OFF_BG
+		btn.TextColor3 = on and ON_TXT or OFF_TXT
+		btn.Text = label .. (on and "  ●  ON" or "  ●  OFF")
+		stroke.Color = on and ON_STR or OFF_STR
+		callback(on)
+	end)
+
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {
+			BackgroundColor3 = toggles[label] and Color3.fromRGB(45, 85, 225) or Color3.fromRGB(32, 32, 52)
+		}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {
+			BackgroundColor3 = toggles[label] and ON_BG or OFF_BG
+		}):Play()
+	end)
+	return btn
+end
+
+local function MakeAction(label, callback)
+	local btn = Instance.new("TextButton")
+	btn.BackgroundColor3 = Color3.fromRGB(18, 48, 155)
+	btn.BorderSizePixel = 0
+	btn.Text = label
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Font = Enum.Font.GothamBold
+	btn.TextSize = 12
+	btn.AutoButtonColor = false
+	btn.Parent = Scroll
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = ON_STR; stroke.Thickness = 1; stroke.Parent = btn
+	btn.MouseButton1Click:Connect(callback)
+	btn.MouseEnter:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(38, 75, 210)}):Play()
+	end)
+	btn.MouseLeave:Connect(function()
+		TweenService:Create(btn, TweenInfo.new(0.1), {BackgroundColor3 = Color3.fromRGB(18, 48, 155)}):Play()
+	end)
+	return btn
+end
+
+local function clearESP(tag)
+	for _, obj in pairs(ESPFolder:GetChildren()) do
+		if obj:GetAttribute("ESPTag") == tag then obj:Destroy() end
+	end
+end
+
+local function makeESP(adornee, color, topText, bottomText, tag)
+	if not adornee or not adornee.Parent then return end
+	local bb = Instance.new("BillboardGui")
+	bb:SetAttribute("ESPTag", tag)
+	bb.Adornee = adornee
+	bb.AlwaysOnTop = true
+	bb.Size = UDim2.new(0, 130, 0, 44)
+	bb.StudsOffset = Vector3.new(0, 4, 0)
+	bb.Parent = ESPFolder
+
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.new(1, 0, 1, 0)
+	bg.BackgroundColor3 = Color3.new(0, 0, 0)
+	bg.BackgroundTransparency = 0.4
+	bg.BorderSizePixel = 0
+	bg.Parent = bb
+	Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 5)
+
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = color; stroke.Thickness = 1; stroke.Parent = bg
+
+	local lbl1 = Instance.new("TextLabel")
+	lbl1.Size = UDim2.new(1, 0, 0.5, 0)
+	lbl1.BackgroundTransparency = 1
+	lbl1.TextColor3 = color
+	lbl1.Text = topText
+	lbl1.Font = Enum.Font.GothamBold
+	lbl1.TextSize = 12
+	lbl1.TextStrokeTransparency = 0
+	lbl1.TextStrokeColor3 = Color3.new(0, 0, 0)
+	lbl1.Parent = bg
+
+	local lbl2 = Instance.new("TextLabel")
+	lbl2.Size = UDim2.new(1, 0, 0.5, 0)
+	lbl2.Position = UDim2.new(0, 0, 0.5, 0)
+	lbl2.BackgroundTransparency = 1
+	lbl2.TextColor3 = Color3.fromRGB(255, 230, 80)
+	lbl2.Text = bottomText or ""
+	lbl2.Font = Enum.Font.Gotham
+	lbl2.TextSize = 11
+	lbl2.TextStrokeTransparency = 0
+	lbl2.TextStrokeColor3 = Color3.new(0, 0, 0)
+	lbl2.Parent = bg
+
+	local box = Instance.new("SelectionBox")
+	box:SetAttribute("ESPTag", tag)
+	box.Color3 = color
+	box.LineThickness = 0.06
+	box.Adornee = adornee
+	box.SurfaceTransparency = 0.88
+	box.SurfaceColor3 = color
+	box.Parent = ESPFolder
+
+	return lbl2
+end
+
+local function isPlayerChar(obj)
+	for _, pl in pairs(Players:GetPlayers()) do
+		if pl.Character == obj then return true end
+	end
+	return false
+end
+
+local function getBestBrainrot()
+	local best, bestVal = nil, -1
+	local char = getChar()
+	for _, obj in pairs(Workspace:GetDescendants()) do
+		if obj:IsA("Model") and not obj:FindFirstChildOfClass("Humanoid") and not isPlayerChar(obj) and obj ~= char then
+			local part = obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+			if part then
+				local val = obj:GetAttribute("Value") or obj:GetAttribute("Worth") or obj:GetAttribute("CashValue") or 0
+				for _, v in pairs(obj:GetDescendants()) do
+					if (v:IsA("NumberValue") or v:IsA("IntValue")) then
+						local n = v.Name:lower()
+						if n:find("value") or n:find("worth") or n:find("cash") or n:find("income") or n:find("price") then
+							val = math.max(val, v.Value); break
+						end
+					end
+				end
+				if val > bestVal then best = part; bestVal = val end
+			end
+		end
+	end
+	if not best then
+		local root = getRoot()
+		if root then
+			local dist = math.huge
+			for _, obj in pairs(Workspace:GetDescendants()) do
+				if obj:IsA("BasePart") then
+					local n = obj.Name:lower()
+					local pn = (obj.Parent and obj.Parent.Name or ""):lower()
+					if n:find("brainrot") or pn:find("brainrot") or n:find("pizzanini") or n:find("burrito") then
+						local d = (obj.Position - root.Position).Magnitude
+						if d < dist then best = obj; dist = d end
+					end
+				end
+			end
+		end
+	end
+	return best
+end
+
+local function getNearestBrainrot()
+	local root = getRoot()
+	if not root then return nil end
+	local char = getChar()
+	local nearest, dist = nil, math.huge
+	for _, obj in pairs(Workspace:GetDescendants()) do
+		if obj:IsA("BasePart") and (not char or not obj:IsDescendantOf(char)) then
+			local n = obj.Name:lower()
+			local pn = (obj.Parent and obj.Parent.Name or ""):lower()
+			if n:find("brainrot") or pn:find("brainrot") or n:find("pet") or pn:find("pet") or n:find("pizzanini") then
+				local d = (obj.Position - root.Position).Magnitude
+				if d < dist then nearest = obj; dist = d end
+			end
+		end
+	end
+	return nearest
+end
+
+local function findPlayerBase(pl)
+	local pname = pl.Name:lower()
+	for _, obj in pairs(Workspace:GetDescendants()) do
+		local n = obj.Name:lower()
+		if n:find(pname) and (n:find("base") or n:find("plot") or n:find("island") or n:find("zone") or n:find("house")) then
+			return obj
+		end
+	end
+	for _, obj in pairs(Workspace:GetChildren()) do
+		if obj:IsA("Model") then
+			local n = obj.Name:lower()
+			if n:find("base") or n:find("plot") or n:find("island") then
+				local owner = obj:FindFirstChild("Owner") or obj:FindFirstChild("PlayerName") or obj:FindFirstChild("Player")
+				if owner then
+					local ov = (owner:IsA("StringValue") and owner.Value)
+						or (owner:IsA("ObjectValue") and owner.Value and owner.Value.Name) or ""
+					if ov:lower() == pname then return obj end
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local function getNearestPlayer()
+	local root = getRoot()
+	if not root then return nil end
+	local nearest, dist = nil, math.huge
+	for _, pl in pairs(Players:GetPlayers()) do
+		if pl ~= LP and pl.Character then
+			local oRoot = pl.Character:FindFirstChild("HumanoidRootPart")
+			if oRoot then
+				local d = (root.Position - oRoot.Position).Magnitude
+				if d < dist then nearest = pl; dist = d end
+			end
+		end
+	end
+	return nearest
+end
+
+MakeToggle("ESP BEST", function(on)
+	clearESP("esp_best")
+	if on then
+		loops["ESP BEST"] = RunService.Heartbeat:Connect(function()
+			if not toggles["ESP BEST"] then return end
+			clearESP("esp_best")
+			local b = getBestBrainrot()
+			if b then makeESP(b, Color3.fromRGB(255, 215, 0), "★ BEST BRAINROT", "подойди!", "esp_best") end
+		end)
+	else
+		if loops["ESP BEST"] then loops["ESP BEST"]:Disconnect() end
+	end
+end)
+
+MakeToggle("ESP PLAYER", function(on)
+	clearESP("esp_pl")
+	if on then
+		loops["ESP PLAYER"] = RunService.Heartbeat:Connect(function()
+			if not toggles["ESP PLAYER"] then return end
+			clearESP("esp_pl")
+			for _, pl in pairs(Players:GetPlayers()) do
+				if pl ~= LP and pl.Character then
+					local r = pl.Character:FindFirstChild("HumanoidRootPart")
+					local hum = pl.Character:FindFirstChildOfClass("Humanoid")
+					if r then
+						local hp = hum and math.floor(hum.Health) .. " HP" or "?"
+						makeESP(r, Color3.fromRGB(255, 80, 80), pl.Name, hp, "esp_pl")
+					end
+				end
+			end
+		end)
+	else
+		if loops["ESP PLAYER"] then loops["ESP PLAYER"]:Disconnect() end
+	end
+end)
+
+MakeToggle("ESP BASE", function(on)
+	clearESP("esp_base")
+	if on then
+		loops["ESP BASE"] = RunService.Heartbeat:Connect(function()
+			if not toggles["ESP BASE"] then return end
+			clearESP("esp_base")
+			for _, pl in pairs(Players:GetPlayers()) do
+				if pl ~= LP then
+					local base = findPlayerBase(pl)
+					if base then
+						local part = (base:IsA("BasePart") and base) or base.PrimaryPart or base:FindFirstChildWhichIsA("BasePart")
+						if part then makeESP(part, Color3.fromRGB(80, 200, 255), pl.Name .. " BASE", "база", "esp_base") end
+					end
+				end
+			end
+		end)
+	else
+		if loops["ESP BASE"] then loops["ESP BASE"]:Disconnect() end
+	end
+end)
+
+MakeToggle("AUTO STEAL", function(on)
+	if on then
+		loops["AUTO STEAL"] = RunService.Heartbeat:Connect(function()
+			if not toggles["AUTO STEAL"] then return end
+			local root = getRoot()
+			if not root then return end
+			for _, pl in pairs(Players:GetPlayers()) do
+				if pl ~= LP and pl.Character then
+					local base = findPlayerBase(pl)
+					if base then
+						for _, obj in pairs(base:GetDescendants()) do
+							if obj:IsA("BasePart") and obj:FindFirstChild("TouchInterest") then
+								if (root.Position - obj.Position).Magnitude < 25 then
+									pcall(firetouchinterest, root, obj, 0)
+									pcall(firetouchinterest, root, obj, 1)
+								end
+							end
+						end
+					end
+				end
+			end
+		end)
+	else
+		if loops["AUTO STEAL"] then loops["AUTO STEAL"]:Disconnect() end
+	end
+end)
+
+MakeToggle("DEVOURER", function(on)
+	if on then
+		loops["DEVOURER"] = RunService.Heartbeat:Connect(function()
+			if not toggles["DEVOURER"] then return end
+			local root = getRoot()
+			if not root then return end
+			for _, obj in pairs(Workspace:GetDescendants()) do
+				if obj:IsA("BasePart") and obj:FindFirstChild("TouchInterest") then
+					local n = obj.Name:lower()
+					if n:find("brainrot") or n:find("coin") or n:find("item") or n:find("pickup") then
+						pcall(firetouchinterest, root, obj, 0)
+						pcall(firetouchinterest, root, obj, 1)
+					end
+				end
+			end
+		end)
+	else
+		if loops["DEVOURER"] then loops["DEVOURER"]:Disconnect() end
+	end
+end)
+
+MakeToggle("STEAL FLOOR", function(on)
+	if on then
+		loops["STEAL FLOOR"] = RunService.Heartbeat:Connect(function()
+			if not toggles["STEAL FLOOR"] then return end
+			local root = getRoot()
+			if not root then return end
+			for _, obj in pairs(Workspace:GetDescendants()) do
+				if obj:IsA("ProximityPrompt") then
+					local char = getChar()
+					if obj.Parent and (not char or not obj.Parent:IsDescendantOf(char)) then
+						local part = obj.Parent:IsA("BasePart") and obj.Parent or obj.Parent:FindFirstChildWhichIsA("BasePart")
+						if part and (part.Position - root.Position).Magnitude < obj.MaxActivationDistance + 5 then
+							pcall(fireproximityprompt, obj)
+						end
+					end
+				end
+			end
+		end)
+	else
+		if loops["STEAL FLOOR"] then loops["STEAL FLOOR"]:Disconnect() end
+	end
+end)
+
+MakeToggle("DESYNC V3", function(on)
+	if on then
+		pcall(function() settings().Network.IncomingReplicationLag = 1000 end)
+		loops["DESYNC V3"] = RunService.Heartbeat:Connect(function()
+			if not toggles["DESYNC V3"] then return end
+			local root = getRoot()
+			if not root then return end
+			local cf = root.CFrame
+			root.CFrame = cf * CFrame.new(math.random(-10, 10) * 0.04, 0, math.random(-10, 10) * 0.04)
+			task.defer(function() if root and root.Parent then root.CFrame = cf end end)
+		end)
+	else
+		pcall(function() settings().Network.IncomingReplicationLag = 0 end)
+		if loops["DESYNC V3"] then loops["DESYNC V3"]:Disconnect() end
+	end
+end)
+
+MakeToggle("X-RAY", function(on)
+	local char = getChar()
+	for _, part in pairs(Workspace:GetDescendants()) do
+		if part:IsA("BasePart") and (not char or not part:IsDescendantOf(char)) then
+			if on then
+				if not part:GetAttribute("FX") then part:SetAttribute("FX", part.LocalTransparencyModifier) end
+				part.LocalTransparencyModifier = 0.8
+			else
+				local orig = part:GetAttribute("FX")
+				if orig ~= nil then part.LocalTransparencyModifier = orig; part:SetAttribute("FX", nil) end
+			end
+		end
+	end
+end)
+
+MakeToggle("FPS BOOST", function(on)
+	if on then
+		settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+		Lighting.GlobalShadows = false
+		Lighting.FogEnd = 9e9
+		for _, v in pairs(Workspace:GetDescendants()) do
+			if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+				v.Enabled = false
+			end
+			if v:IsA("Decal") or v:IsA("Texture") then
+				if not v:GetAttribute("FPS_T") then v:SetAttribute("FPS_T", v.Transparency) end
+				v.Transparency = 1
+			end
+		end
+	else
+		settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+		Lighting.GlobalShadows = true
+		for _, v in pairs(Workspace:GetDescendants()) do
+			if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+				v.Enabled = true
+			end
+			if v:IsA("Decal") or v:IsA("Texture") then
+				local orig = v:GetAttribute("FPS_T")
+				if orig ~= nil then v.Transparency = orig; v:SetAttribute("FPS_T", nil) end
+			end
+		end
+	end
+end)
+
+MakeAction("FLY TO BEST ➜", function()
+	local root = getRoot()
+	if not root then return end
+	local best = getBestBrainrot()
+	if best then root.CFrame = CFrame.new(best.Position + Vector3.new(0, 5, 0)) end
+end)
+
+MakeToggle("UNWALK", function(on)
+	local hum = getHum()
+	if hum then hum.WalkSpeed = on and 0 or (toggles["SPEED"] and 120 or 16) end
+end)
+
+MakeToggle("HIDE SKIN", function(on)
+	local char = getChar()
+	if not char then return end
+	for _, part in pairs(char:GetDescendants()) do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			if on then
+				if not part:GetAttribute("FHS") then part:SetAttribute("FHS", part.Transparency) end
+				part.Transparency = 1
+			else
+				local orig = part:GetAttribute("FHS")
+				if orig ~= nil then part.Transparency = orig; part:SetAttribute("FHS", nil) end
+			end
+		elseif part:IsA("Decal") then
+			if on then
+				if not part:GetAttribute("FHS") then part:SetAttribute("FHS", part.Transparency) end
+				part.Transparency = 1
+			else
+				local orig = part:GetAttribute("FHS")
+				if orig ~= nil then part.Transparency = orig; part:SetAttribute("FHS", nil) end
+			end
+		end
+	end
+end)
+
+MakeToggle("SPEED", function(on)
+	local hum = getHum()
+	if hum then hum.WalkSpeed = on and 120 or 16 end
+end)
+
+MakeToggle("INF JUMP", function(on)
+	if on then
+		loops["INF JUMP"] = UserInputService.JumpRequest:Connect(function()
+			local hum = getHum()
+			if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+		end)
+	else
+		if loops["INF JUMP"] then loops["INF JUMP"]:Disconnect() end
+	end
+end)
+
+MakeToggle("ANTI RAGDOLL", function(on)
+	local function apply(char)
+		if not char then return end
+		for _, v in pairs(char:GetDescendants()) do
+			if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") then v.Enabled = not on end
+		end
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, not on)
+			hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, not on)
+			hum.PlatformStand = false
+		end
+	end
+	apply(getChar())
+	if loops["ANTI RAGDOLL"] then loops["ANTI RAGDOLL"]:Disconnect() end
+	if on then
+		loops["ANTI RAGDOLL"] = LP.CharacterAdded:Connect(function(c) task.wait(0.5); apply(c) end)
+	end
+end)
+
+MakeToggle("AUTO KICK", function(on)
+	if on then
+		loops["AUTO KICK"] = RunService.Heartbeat:Connect(function()
+			if not toggles["AUTO KICK"] then return end
+			local nearest = getNearestPlayer()
+			if nearest and nearest.Character then
+				local tool = getChar() and getChar():FindFirstChildOfClass("Tool")
+				if tool then
+					local ev = tool:FindFirstChild("SlapRemote") or tool:FindFirstChild("HitRemote") or tool:FindFirstChild("AttackRemote")
+					if ev and ev:IsA("RemoteEvent") then
+						pcall(function() ev:FireServer(nearest.Character) end)
+					else
+						pcall(function() tool:Activate() end)
+					end
+				end
+			end
+		end)
+	else
+		if loops["AUTO KICK"] then loops["AUTO KICK"]:Disconnect() end
+	end
+end)
+
+MakeToggle("FLY V2", function(on)
+	local root = getRoot()
+	if not root then return end
+	if on then
+		local hum = getHum()
+		if hum then hum.PlatformStand = true end
+		flyBV = Instance.new("BodyVelocity")
+		flyBV.Velocity = Vector3.zero
+		flyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+		flyBV.Parent = root
+		flyBG = Instance.new("BodyGyro")
+		flyBG.P = 9e4
+		flyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+		flyBG.CFrame = root.CFrame
+		flyBG.Parent = root
+		RunService:BindToRenderStep("FrostFly", Enum.RenderPriority.Camera.Value + 1, function()
+			if not toggles["FLY V2"] then RunService:UnbindFromRenderStep("FrostFly"); return end
+			local cam = Workspace.CurrentCamera
+			local move = Vector3.zero
+			local spd = toggles["SPEED"] and 120 or 60
+			if UserInputService:IsKeyDown(Enum.KeyCode.W) then move += cam.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.S) then move -= cam.CFrame.LookVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.A) then move -= cam.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.D) then move += cam.CFrame.RightVector end
+			if UserInputService:IsKeyDown(Enum.KeyCode.Space) then move += Vector3.new(0, 1, 0) end
+			if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then move -= Vector3.new(0, 1, 0) end
+			if flyBV and flyBV.Parent then flyBV.Velocity = move.Magnitude > 0 and move.Unit * spd or Vector3.zero end
+			if flyBG and flyBG.Parent then flyBG.CFrame = cam.CFrame end
+		end)
+	else
+		RunService:UnbindFromRenderStep("FrostFly")
+		if flyBV then flyBV:Destroy(); flyBV = nil end
+		if flyBG then flyBG:Destroy(); flyBG = nil end
+		local hum = getHum()
+		if hum then hum.PlatformStand = false end
+	end
+end)
+
+MakeAction("NEAREST ➜", function()
+	local root = getRoot()
+	if not root then return end
+	local near = getNearestBrainrot()
+	if near then root.CFrame = CFrame.new(near.Position + Vector3.new(0, 4, 0)) end
+end)
+
+MakeToggle("ANTI DEBUFF", function(on)
+	if on then
+		loops["ANTI DEBUFF"] = RunService.Heartbeat:Connect(function()
+			if not toggles["ANTI DEBUFF"] then return end
+			local hum = getHum()
+			if not hum then return end
+			local targetSpeed = toggles["SPEED"] and 120 or 16
+			if hum.WalkSpeed < targetSpeed then hum.WalkSpeed = targetSpeed end
+			if hum.JumpPower < 50 then hum.JumpPower = 50 end
+		end)
+	else
+		if loops["ANTI DEBUFF"] then loops["ANTI DEBUFF"]:Disconnect() end
+	end
+end)
+
+MakeToggle("AUTO REACTIVE", function(on)
+	if on then
+		loops["AUTO REACTIVE"] = LP.CharacterAdded:Connect(function(char)
+			task.wait(1.2)
+			humanoid = char:WaitForChild("Humanoid")
+			hrp = char:WaitForChild("HumanoidRootPart")
+			if toggles["SPEED"] then humanoid.WalkSpeed = 120 end
+			if toggles["INF JUMP"] then
+				if loops["INF JUMP"] then loops["INF JUMP"]:Disconnect() end
+				loops["INF JUMP"] = UserInputService.JumpRequest:Connect(function()
+					humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+				end)
+			end
+			if toggles["ANTI RAGDOLL"] then
+				task.wait(0.3)
+				for _, v in pairs(char:GetDescendants()) do
+					if v:IsA("BallSocketConstraint") or v:IsA("HingeConstraint") then v.Enabled = false end
+				end
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+			end
+		end)
+	else
+		if loops["AUTO REACTIVE"] then loops["AUTO REACTIVE"]:Disconnect() end
+	end
+end)
+
+MakeToggle("MENU LATERAL", function(on)
+	menuLateral = on
+	applyScale()
+end)
+
+local SpeedFrame = Instance.new("Frame")
+SpeedFrame.Size = UDim2.new(0, 480, 0, 56)
+SpeedFrame.BackgroundColor3 = Color3.fromRGB(16, 16, 30)
+SpeedFrame.BorderSizePixel = 0
+SpeedFrame.LayoutOrder = 999
+SpeedFrame.Parent = Scroll
+Instance.new("UICorner", SpeedFrame).CornerRadius = UDim.new(0, 8)
+local sStroke = Instance.new("UIStroke")
+sStroke.Color = OFF_STR; sStroke.Thickness = 1; sStroke.Parent = SpeedFrame
+
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Size = UDim2.new(1, -10, 0, 22)
+SpeedLabel.Position = UDim2.new(0, 10, 0, 5)
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Text = "SPEED VALUE: 120"
+SpeedLabel.TextColor3 = Color3.fromRGB(170, 200, 255)
+SpeedLabel.Font = Enum.Font.GothamBold
+SpeedLabel.TextSize = 12
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.Parent = SpeedFrame
+
+local SliderBg = Instance.new("Frame")
+SliderBg.Size = UDim2.new(1, -20, 0, 8)
+SliderBg.Position = UDim2.new(0, 10, 0, 38)
+SliderBg.BackgroundColor3 = Color3.fromRGB(38, 38, 65)
+SliderBg.BorderSizePixel = 0
+SliderBg.Parent = SpeedFrame
+Instance.new("UICorner", SliderBg).CornerRadius = UDim.new(1, 0)
+
+local SliderFill = Instance.new("Frame")
+SliderFill.Size = UDim2.new(1, 0, 1, 0)
+SliderFill.BackgroundColor3 = ON_STR
+SliderFill.BorderSizePixel = 0
+SliderFill.Parent = SliderBg
+Instance.new("UICorner", SliderFill).CornerRadius = UDim.new(1, 0)
+
+local SliderHandle = Instance.new("Frame")
+SliderHandle.Size = UDim2.new(0, 14, 0, 14)
+SliderHandle.AnchorPoint = Vector2.new(0.5, 0.5)
+SliderHandle.Position = UDim2.new(1, 0, 0.5, 0)
+SliderHandle.BackgroundColor3 = Color3.fromRGB(210, 225, 255)
+SliderHandle.BorderSizePixel = 0
+SliderHandle.ZIndex = 2
+SliderHandle.Parent = SliderBg
+Instance.new("UICorner", SliderHandle).CornerRadius = UDim.new(1, 0)
+
+local speedVal = 120
+local SliderHit = Instance.new("TextButton")
+SliderHit.Size = UDim2.new(1, 0, 4, 0)
+SliderHit.Position = UDim2.new(0, 0, -1.5, 0)
+SliderHit.BackgroundTransparency = 1
+SliderHit.Text = ""
+SliderHit.Parent = SliderBg
+
+local sliding = false
+SliderHit.InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+		sliding = true
+	end
+end)
+UserInputService.InputEnded:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+		sliding = false
+	end
+end)
+UserInputService.InputChanged:Connect(function(i)
+	if sliding and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+		local relX = math.clamp((i.Position.X - SliderBg.AbsolutePosition.X) / SliderBg.AbsoluteSize.X, 0, 1)
+		speedVal = math.floor(16 + relX * (300 - 16))
+		SliderFill.Size = UDim2.new(relX, 0, 1, 0)
+		SliderHandle.Position = UDim2.new(relX, 0, 0.5, 0)
+		SpeedLabel.Text = "SPEED VALUE: " .. speedVal
+		local hum = getHum()
+		if hum and toggles["SPEED"] then hum.WalkSpeed = speedVal end
+	end
+end)
+
+if isMobile then
+	local MobileBtn = Instance.new("TextButton")
+	MobileBtn.Size = UDim2.new(0, 65, 0, 65)
+	MobileBtn.Position = UDim2.new(0, 15, 0.5, -32)
+	MobileBtn.BackgroundColor3 = Color3.fromRGB(15, 30, 120)
+	MobileBtn.Text = "❄️\nFROST"
+	MobileBtn.TextColor3 = Color3.fromRGB(200, 230, 255)
+	MobileBtn.Font = Enum.Font.GothamBold
+	MobileBtn.TextSize = 12
+	MobileBtn.BorderSizePixel = 0
+	MobileBtn.ZIndex = 10
+	MobileBtn.Parent = SG
+	Instance.new("UICorner", MobileBtn).CornerRadius = UDim.new(1, 0)
+	local mStroke = Instance.new("UIStroke")
+	mStroke.Color = ON_STR; mStroke.Thickness = 2; mStroke.Parent = MobileBtn
+	MobileBtn.MouseButton1Click:Connect(function()
+		menuVisible = not menuVisible
+		Main.Visible = menuVisible
+	end)
+end
+
+LP.CharacterAdded:Connect(function(char)
+	task.wait(0.5)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	hrp = char:WaitForChild("HumanoidRootPart")
+	if toggles["SPEED"] then humanoid.WalkSpeed = speedVal end
+	if toggles["FLY V2"] then
+		toggles["FLY V2"] = false
+		RunService:UnbindFromRenderStep("FrostFly")
+		if flyBV then flyBV:Destroy(); flyBV = nil end
+		if flyBG then flyBG:Destroy(); flyBG = nil end
+	end
+end)
+
+pcall(function()
+	StarterGui:SetCore("SendNotification", {
+		Title = "❄️ Frost Hub v0.0.1",
+		Text = "Загружено! [RShift] — скрыть",
+		Duration = 4,
+	})
+end)
